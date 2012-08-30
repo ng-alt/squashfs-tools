@@ -154,4 +154,3 @@ struct compressor lzma_comp_ops = {
 	.name = "lzma",
 	.supported = 1
 };
-

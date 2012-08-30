@@ -26,7 +26,7 @@ GZIP_SUPPORT = 1
 # To build using XZ Utils liblzma - install the library and uncomment
 # the XZ_SUPPORT line below.
 #
-#XZ_SUPPORT = 1
+XZ_SUPPORT = 1
 
 
 ############ Building LZO support ##############
@@ -67,7 +67,11 @@ GZIP_SUPPORT = 1
 # in Mksquashfs.  Obviously the compression algorithm must have been
 # selected to be built
 #
-COMP_DEFAULT = gzip
+COMP_DEFAULT = xz
+SQUASHFS_DIR := $(shell pwd)
+XZ_DIR = $(SQUASHFS_DIR)/../../tools/misc/xz
+
+
 
 ###############################################
 #  Extended attribute (XATTRs) build options  #
@@ -92,6 +96,13 @@ XATTR_DEFAULT = 1
 ###############################################
 #        End of BUILD options section         #
 ###############################################
+CC = gcc
+RANLIB = ranlib
+AR =  ar
+AS = as
+LD = ld
+NM = nm
+STRIP = strip
 
 INCLUDEDIR = -I.
 INSTALL_DIR = /usr/local/bin
@@ -105,7 +116,7 @@ CFLAGS ?= -O2
 CFLAGS += $(EXTRA_CFLAGS) $(INCLUDEDIR) -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOMP_DEFAULT=\"$(COMP_DEFAULT)\" \
 	-Wall
-
+	
 LIBS = -lpthread -lm
 ifeq ($(GZIP_SUPPORT),1)
 CFLAGS += -DGZIP_SUPPORT
@@ -137,7 +148,8 @@ ifeq ($(XZ_SUPPORT),1)
 CFLAGS += -DXZ_SUPPORT
 MKSQUASHFS_OBJS += xz_wrapper.o
 UNSQUASHFS_OBJS += xz_wrapper.o
-LIBS += -llzma
+CFLAGS += -I$(XZ_DIR)/src/liblzma/api
+LIBS += -L$(XZ_DIR)/src/liblzma/.libs -llzma
 COMPRESSORS += xz
 endif
 
@@ -196,9 +208,18 @@ $(error "COMP_DEFAULT isn't selected to be built!")
 endif
 
 .PHONY: all
-all: mksquashfs unsquashfs
+all: mksquashfs unsquashfs check_lzma
 
-mksquashfs: $(MKSQUASHFS_OBJS)
+xz_config:
+	[ -f $(XZ_DIR)/src/liblzma/.libs/liblzma.a ] || ( \
+	cd  $(XZ_DIR) && ./configure --prefix=$(shell pwd) --enable-shared=no \
+	)
+	cd $(SQUASHFS_DIR)
+
+check_lzma: xz_config
+	[ -f $(XZ_DIR)/src/liblzma/.libs/liblzma.a ] || ( $(MAKE) -C $(XZ_DIR) )
+
+mksquashfs: check_lzma $(MKSQUASHFS_OBJS)
 	$(CC) $(LDFLAGS) $(EXTRA_LDFLAGS) $(MKSQUASHFS_OBJS) $(LIBS) -o $@
 
 mksquashfs.o: mksquashfs.c squashfs_fs.h mksquashfs.h sort.h squashfs_swap.h \
@@ -250,6 +271,7 @@ unsquashfs_xattr.o: unsquashfs_xattr.c unsquashfs.h squashfs_fs.h xattr.h
 .PHONY: clean
 clean:
 	-rm -f *.o mksquashfs unsquashfs
+	make -C $(XZ_DIR) clean
 
 .PHONY: install
 install: mksquashfs unsquashfs

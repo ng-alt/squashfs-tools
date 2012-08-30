@@ -109,4 +109,3 @@ struct compressor gzip_comp_ops = {
 	.name = "gzip",
 	.supported = 1
 };
-

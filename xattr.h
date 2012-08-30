@@ -145,4 +145,3 @@ static inline struct xattr_list *get_xattr(int i, unsigned int *count)
 #define XOPT_STR " (unsupported)"
 #define XATTR_DEF 1
 #endif
-

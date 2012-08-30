@@ -119,4 +119,3 @@ struct compressor lzo_comp_ops = {
 	.name = "lzo",
 	.supported = 1
 };
-
